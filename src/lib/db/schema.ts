@@ -1,5 +1,10 @@
+
+import { equipmentConditionEnum, equipmentStatusEnum } from "@/utils/extraForSchema";
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, index, uuid, integer } from "drizzle-orm/pg-core";
+
+
+
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -77,6 +82,26 @@ export const verification = pgTable(
   },
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
+
+export const EquipmentTable = pgTable("equipment", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  category: text("category").notNull(),
+  internalTag: text("internal_tag").notNull(),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  equipmentCondition: equipmentConditionEnum("equipment_condition").default("excellent").notNull(),
+  equipmentStatus: equipmentStatusEnum("equipment_status").default("active").notNull(),
+  requireApproval: boolean("require_approval").default(true).notNull(),
+  maxCheckOutDays: integer("max_checkout_days").default(3).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+})
+
+// relations
 
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
