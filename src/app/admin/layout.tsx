@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   description: "Equipment",
 };
 
-export default async function RootLayout({
+export default async function AdminLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -63,17 +63,17 @@ export default async function RootLayout({
                 <h4 className="px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Overview
                 </h4>
-                <Button variant="outline" className="justify-start w-full cursor-pointer">
+                <Button variant="outline" className="justify-start w-full cursor-pointer" asChild>
                   <Link href="/" className="flex gap-2">
                     <LayoutDashboard/> Dashboard
                   </Link>
                 </Button>
-                <Button variant="outline" className="justify-start w-full cursor-pointer">
+                <Button variant="outline" className="justify-start w-full cursor-pointer" asChild>
                   <Link href="/admin/approval" className="flex gap-2">
                     <Clock5/> Approval
                   </Link>
                 </Button>
-                <Button variant="outline" className="justify-start w-full cursor-pointer">
+                <Button variant="outline" className="justify-start w-full cursor-pointer" asChild>
                   <Link href="/admin/schedule" className="flex gap-2">
                     <CalendarCheck/> Schedule
                   </Link>
@@ -83,12 +83,12 @@ export default async function RootLayout({
                 <h4 className="px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Inventory
                 </h4>
-                <Button variant="outline" className="justify-start w-full cursor-pointer">
+                <Button variant="outline" className="justify-start w-full cursor-pointer" asChild>
                   <Link href="/admin/equipment" className="flex gap-2">
                     <Component/> Equipment
                   </Link>
                 </Button>
-                <Button variant="outline" className="justify-start w-full cursor-pointer">
+                <Button variant="outline" className="justify-start w-full cursor-pointer" asChild>
                   <Link href="/admin/report" className="flex gap-2">
                     <Flag/> Damage Report
                   </Link>
@@ -98,12 +98,12 @@ export default async function RootLayout({
                 <h4 className="px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   People
                 </h4>
-                <Button variant="outline" className="justify-start w-full cursor-pointer">
+                <Button variant="outline" className="justify-start w-full cursor-pointer" asChild>
                   <Link href="/admin/members" className="flex gap-2">
                     <Users/> Members
                   </Link>
                 </Button>
-                <Button variant="outline" className="justify-start w-full cursor-pointer">
+                <Button variant="outline" className="justify-start w-full cursor-pointer" asChild>
                   <Link href="/admin/roles" className="flex gap-2">
                     <LockKeyhole/> Roles & access
                   </Link>

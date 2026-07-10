@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { House } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -26,11 +29,17 @@ export const metadata: Metadata = {
   description: "Equipment",
 };
 
-export default function RootLayout({
+export default async function UserLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session=await auth.api.getSession({
+    headers:await headers()
+  })
+  if(session && session.user.role==='admin'){
+    redirect("/admin")
+  }
   return (
     <html
       lang="en"
