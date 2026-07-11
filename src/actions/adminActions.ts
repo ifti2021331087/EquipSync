@@ -3,7 +3,7 @@
 import { equipmentSchema } from "@/components/schama/equipment";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { EquipmentTable } from "@/lib/db/schema";
+import { BookingTable, EquipmentTable } from "@/lib/db/schema";
 import { count, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -76,3 +76,46 @@ export async function getTotalEquipmentCountAction() {
     }
 }
 
+export async function reviewBookingAction(bookingId:string,newStatus:"approved"|"denied") {
+    
+    const session = await auth.api.getSession({
+        headers: await headers()
+    })
+
+    if (!session || session.user.role !== 'admin') {
+        throw new Error("You must be admin to review the booking.");
+    }
+
+    try{
+        await db.update(BookingTable).set({
+            status:newStatus,
+            reviewedById:session.user.id,
+            reviewedAt:new Date(),
+            updatedAt:new Date()
+        })
+
+        revalidatePath("/admin/approval");
+        revalidatePath("/admin/schedule");
+
+        return{
+            success:true
+        }
+    }
+    catch(e){
+        console.log("Booking review error: ",e);
+        return{
+            success:false,
+            error:"An unexpected error occurred while reviewing the booking."
+        }
+    }
+}
+
+export const pendingBookingAction=async()=>{
+    const session = await auth.api.getSession({
+        headers: await headers()
+    })
+
+    if (!session || session.user.role !== 'admin') {
+        throw new Error("You must be admin to get the pending bookings");
+    }
+}

@@ -48,7 +48,7 @@ export default function Header() {
         {/* Left Side: Logo */}
         <div className="flex items-center gap-2">
           <Link href={"/"} className="flex gap-2 items-center">
-            <Image src={"mechanical-engineering.svg"} width={20} height={20} alt="home"></Image>
+            <Image src={"/mechanical-engineering.svg"} width={20} height={20} alt="home"></Image>
             <span className="font-bold text-xl text-black dark:text-white hover:opacity-80 transition-opacity">
               Equipment
             </span>

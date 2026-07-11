@@ -10,6 +10,19 @@ import { headers } from "next/headers";
 import z from "zod"
 
 
+export async function getEquipmentDetailsById(id: string) {
+    try {
+        const query = await db.select().from(EquipmentTable)
+            .where(eq(EquipmentTable.id, id))
+
+        return query;
+    }
+    catch (e) {
+        console.log(e);
+        return [];
+    }
+}
+
 export const createBookingAction = async (data: z.infer<typeof bookingSchema>) => {
     const session = await auth.api.getSession({
         headers: await headers()
@@ -64,25 +77,25 @@ export const createBookingAction = async (data: z.infer<typeof bookingSchema>) =
         const initialStatus = equipment.requireApproval ? "pending" : "approved";
 
         await db.insert(BookingTable).values({
-            equipmentId:validatedData.equipmentId,
-            userId:session.session.id,
-            startTime:validatedData.startTime,
-            endTime:validatedData.endTime,
-            status:initialStatus
+            equipmentId: validatedData.equipmentId,
+            userId: session.user.id,
+            startTime: validatedData.startTime,
+            endTime: validatedData.endTime,
+            status: initialStatus
         })
 
         revalidatePath(`/equipment/${equipment.id}`)
 
-        return{
-            success:true,
-            status:initialStatus
+        return {
+            success: true,
+            status: initialStatus
         }
     }
     catch (e) {
-        console.log("Booking error: ",e);
-        return{
-            success:false,
-            error:"An unexpected error occurred while booking..."
+        console.log("Booking error: ", e);
+        return {
+            success: false,
+            error: "An unexpected error occurred while booking..."
         }
     }
 }
