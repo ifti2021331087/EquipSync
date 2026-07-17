@@ -1,28 +1,28 @@
 export function formatBookingSlot(startTime: Date | string, endTime: Date | string): string {
-    const start = new Date(startTime);
-    const end = new Date(endTime);
+  const start = new Date(startTime);
+  const end = new Date(endTime);
 
-    // 1. Format the Date (e.g., "Jul 11")
-    const datePart = start.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric' 
-    });
+  // 1. Format the Date (e.g., "Jul 11")
+  const datePart = start.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric'
+  });
 
-    // 2. Format times to 24-hour clock (e.g., "13:00")
-    const timeOptions: Intl.DateTimeFormatOptions = { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        hour12: false // Forces 24-hour format instead of AM/PM
-    };
-    
-    // Some older browsers handle hour12: false weirdly, so doing hourCycle is safer
-    timeOptions.hourCycle = 'h23'; 
+  // 2. Format times to 24-hour clock (e.g., "13:00")
+  const timeOptions: Intl.DateTimeFormatOptions = {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false // Forces 24-hour format instead of AM/PM
+  };
 
-    const startTimeStr = start.toLocaleTimeString('en-US', timeOptions);
-    const endTimeStr = end.toLocaleTimeString('en-US', timeOptions);
+  // Some older browsers handle hour12: false weirdly, so doing hourCycle is safer
+  timeOptions.hourCycle = 'h23';
 
-    // 3. Combine with the middle dot (·) and en-dash (–)
-    return `${datePart} · ${startTimeStr}–${endTimeStr}`;
+  const startTimeStr = start.toLocaleTimeString('en-US', timeOptions);
+  const endTimeStr = end.toLocaleTimeString('en-US', timeOptions);
+
+  // 3. Combine with the middle dot (·) and en-dash (–)
+  return `${datePart} · ${startTimeStr}–${endTimeStr}`;
 }
 
 export function getWeekRangeString(dateString: string | Date): string {
@@ -55,8 +55,8 @@ export function getWeekRangeString(dateString: string | Date): string {
   if (startYear !== endYear) {
     // Example: "Week of Dec 28, 2025 – Jan 3, 2026"
     return `Week of ${startMonth} ${startDay}, ${startYear} – ${endMonth} ${endDay}, ${endYear}`;
-  } 
-  
+  }
+
   if (startMonth !== endMonth) {
     // Example: "Week of Jul 28 – Aug 3, 2026"
     return `Week of ${startMonth} ${startDay} – ${endMonth} ${endDay}, ${startYear}`;
@@ -88,7 +88,7 @@ export function getWeeklyDayHeaders(dateString: string | Date): string[] {
 
     // Get the short weekday (e.g., "Mon") and uppercase it to "MON"
     const dayName = currentDay.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-    
+
     // Get the date number (e.g., 22)
     const dayNumber = currentDay.getDate();
 
@@ -98,3 +98,11 @@ export function getWeeklyDayHeaders(dateString: string | Date): string[] {
 
   return weekDays;
 }
+
+export const formatDateTimeForPendingRequest = (start: Date, end: Date) => {
+  const dateStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const startTimeStr = start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const endTimeStr = end.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  return `${dateStr} · ${startTimeStr} – ${endTimeStr}`;
+};

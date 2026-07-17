@@ -21,14 +21,14 @@ export default async function Home({ searchParams }:
 
       {/* Category Filters */}
       <div className='flex gap-2 flex-wrap'>
-        <Link href="/admin/equipment">
+        <Link href="/equipment">
           <Button variant={!category ? "default" : "outline"} className="rounded-full h-8 px-4 text-xs">
             All ({totalEquipment})
           </Button>
         </Link>
         {
           EquipmentCategories.map((equipment, index) => (
-            <Link key={index} href={`/admin/equipment?category=${equipment.value}`}>
+            <Link key={index} href={`/equipment?category=${equipment.value}`}>
               <Button
                 variant={category === equipment.value ? "default" : "outline"}
                 className="rounded-full h-8 px-4 text-xs"

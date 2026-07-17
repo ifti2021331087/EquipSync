@@ -5,7 +5,7 @@ import Header from "@/components/header/header";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { House } from "lucide-react";
+import { Bell, History, House, LayoutList, Send, SquareChartGantt, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { auth } from "@/lib/auth";
@@ -63,7 +63,42 @@ export default async function UserLayout({
                 </h4>
                 <Button variant="outline" className="justify-start w-full cursor-pointer">
                   <Link href="/" className="flex gap-2">
-                    <House></House> Equipment
+                    <LayoutList /> Equipment
+                  </Link>
+                </Button>
+              </div>
+              <div className="flex flex-col gap-2">
+                <h4 className="px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  My Activity
+                </h4>
+                <Button variant="outline" className="justify-start w-full cursor-pointer">
+                  <Link href="/checkouts" className="flex gap-2">
+                    <SquareChartGantt/> My Checkouts
+                  </Link>
+                </Button>
+                <Button variant="outline" className="justify-start w-full cursor-pointer">
+                  <Link href="/requests" className="flex gap-2">
+                    <Send /> My Requests
+                  </Link>
+                </Button>
+                <Button variant="outline" className="justify-start w-full cursor-pointer">
+                  <Link href="/history" className="flex gap-2">
+                    <History /> History
+                  </Link>
+                </Button>
+              </div>
+              <div className="flex flex-col gap-2">
+                <h4 className="px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Support
+                </h4>
+                <Button variant="outline" className="justify-start w-full cursor-pointer">
+                  <Link href="/reportDamage" className="flex gap-2">
+                    <TriangleAlert /> Report Damage
+                  </Link>
+                </Button>
+                <Button variant="outline" className="justify-start w-full cursor-pointer">
+                  <Link href="/notifications" className="flex gap-2">
+                     <Bell /> Notifications
                   </Link>
                 </Button>
               </div>
