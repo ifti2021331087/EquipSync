@@ -1,17 +1,61 @@
+"use client";
 
-
-import { Camera } from 'lucide-react';
+import { Camera, Trash2Icon } from 'lucide-react';
 import Image from 'next/image'
-import React from 'react'
-import {formatDateTimeForPendingRequest} from '../../utils/simpleFunctions'
+import React, { useState } from 'react' // 1. Import useState
+import { formatDateTimeForPendingRequest } from '../../utils/simpleFunctions'
+import { togglePendingRequestAction } from '@/actions/userActions';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
+
 interface pendingRequestsProps {
+  id: string,
   equipmentName: string | null;
   image: string | null;
   startTime: Date;
   endTime: Date;
 }
+
 export default function PendingRequestCard({ request }: { request: pendingRequestsProps }) {
   const { equipmentName, image, startTime, endTime } = request;
+  
+  // 2. Define state for the dialog and loading status
+  const [isOpen, setIsOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+
+  const handleCancelRequest = async (e: React.MouseEvent, id: string) => {
+    // Prevent the dialog from closing immediately on click
+    e.preventDefault(); 
+    setIsPending(true);
+
+    try {
+      const data = await togglePendingRequestAction(id);
+      
+      if (data?.success) {
+        toast.success("Pending request cancelled successfully.");
+        setIsOpen(false); // Explicitly close the dialog on success
+      } else {
+        toast.error("Unexpected error while toggling the request.");
+      }
+    } catch (error) {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setIsPending(false);
+    }
+  }
+
   return (
     <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-900 rounded-2xl shadow-sm w-full">
 
@@ -50,12 +94,36 @@ export default function PendingRequestCard({ request }: { request: pendingReques
         </span>
 
         {/* Cancel Button */}
-        <button
-          // onClick={}
-          className="text-xs font-bold text-red-800 dark:text-red-400 hover:underline transition-all cursor-pointer"
-        >
-          Cancel
-        </button>
+        {/* 3. Bind the open state to the AlertDialog */}
+        <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+          <AlertDialogTrigger
+            render={<Button variant="destructive" className="text-xs font-bold text-red-800 dark:text-red-400 hover:underline transition-all cursor-pointer">Cancel</Button>}
+          />
+          <AlertDialogContent size="sm">
+            <AlertDialogHeader>
+              <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
+                <Trash2Icon />
+              </AlertDialogMedia>
+              <AlertDialogTitle>Cancel request</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete this request.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel variant="outline" disabled={isPending}>Skip</AlertDialogCancel>
+              
+              {/* 4. Pass the event to the handler and disable while pending */}
+              <AlertDialogAction 
+                variant="destructive"
+                disabled={isPending}
+                onClick={(e) => handleCancelRequest(e, request.id)}
+              >
+                {isPending ? "Cancelling..." : "Cancel"}
+              </AlertDialogAction>
+              
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
     </div>

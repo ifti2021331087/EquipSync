@@ -14,7 +14,7 @@ export default async function EquipmentPage({ searchParams }:
     const params = await searchParams;
     const category = params.category || "";
     const equipments = await getAllEquipmentAction(category);
-    const totalEquipment=await getTotalEquipmentCountAction();
+    const totalEquipment = await getTotalEquipmentCountAction();
     return (
         <div className="space-y-6">
             <div className='flex justify-between items-center'>
@@ -38,7 +38,7 @@ export default async function EquipmentPage({ searchParams }:
                                 variant={category === equipment.value ? "default" : "outline"}
                                 className="rounded-full h-8 px-4 text-xs"
                             >
-                                {equipment.label} 
+                                {equipment.label}
                             </Button>
                         </Link>
                     ))
@@ -47,7 +47,7 @@ export default async function EquipmentPage({ searchParams }:
 
             {/* Render Logic: Either show the Empty State OR the Grid */}
             {equipments.length === 0 ? (
-                
+
                 /* Centered, Middle-of-the-Page Empty State (Outside the grid) */
                 <div className="flex flex-col items-center justify-center min-h-[60vh] w-full p-8 mt-6 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/10">
                     <div className="w-14 h-14 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
@@ -69,7 +69,9 @@ export default async function EquipmentPage({ searchParams }:
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mt-6">
                     {
                         equipments.map((equipment, index) => (
-                            <AdminEquipmentCard equipment={equipment} key={index}></AdminEquipmentCard>
+                            <Link href={`/admin/equipment/${equipment.id}`} key={index}>
+                                <AdminEquipmentCard equipment={equipment} ></AdminEquipmentCard>
+                            </Link>
                         ))
                     }
                 </div>

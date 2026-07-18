@@ -22,6 +22,13 @@
       "when": 1783749385109,
       "tag": "0002_outstanding_the_twelve",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784363963670,
+      "tag": "0003_nice_kingpin",
+      "breakpoints": true
     }
   ]
 }

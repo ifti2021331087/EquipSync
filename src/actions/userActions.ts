@@ -4,7 +4,7 @@ import { bookingSchema } from "@/components/schama/booking"
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { BookingTable, EquipmentTable, user } from "@/lib/db/schema";
-import { and, eq, gt, gte, inArray, lt, lte, or, count } from "drizzle-orm";
+import { and, eq, gt, gte, inArray, lt, lte, or, count, min, asc, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import z from "zod"
@@ -144,6 +144,7 @@ export const getPendingRequestsAction = async (userId: string) => {
     try {
         const data = await db.select(
             {
+                id:BookingTable.id,
                 equipmentName: EquipmentTable.name,
                 image: EquipmentTable.imageUrl,
                 startTime: BookingTable.startTime,
@@ -164,6 +165,38 @@ export const getPendingRequestsAction = async (userId: string) => {
 
 
 }
+
+export const togglePendingRequestAction=async(bookingId:string)=>{
+     const session = await auth.api.getSession({
+        headers: await headers()
+    })
+    if (!session?.user.id) {
+        return {
+            success: false,
+            error: "You must be logged in toggle your pending requests."
+        }
+    }
+    try{
+        await db.update(BookingTable).set({
+            status:'cancelled'
+        })
+        .where(eq(BookingTable.id,bookingId))
+
+        revalidatePath("/checkouts");
+        revalidatePath("/requests")
+        return{
+            success:true
+        }
+    }
+    catch(e){
+        console.log(e);
+        return{
+            success:false,
+            error:"Unexpected error while toggling the pending request."
+        }
+    }
+}
+
 export const getUserRequestsAction = async (status?: 'active' | 'pending' | 'approved' | 'returned' | 'denied' | 'cancelled' | 'late') => {
     const session = await auth.api.getSession({
         headers: await headers()
@@ -189,7 +222,8 @@ export const getUserRequestsAction = async (status?: 'active' | 'pending' | 'app
         )
             .from(BookingTable)
             .leftJoin(EquipmentTable, () => eq(EquipmentTable.id, BookingTable.equipmentId))
-            .where(whereConditions);
+            .where(whereConditions)
+            .orderBy(desc(BookingTable.createdAt));
 
         return data;
     }
@@ -228,3 +262,69 @@ export const getUserTotalBookingCount=async()=>{
 
 
 }
+
+
+export const getDashboardStatsAction = async () => {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session || session.user.role !== 'admin') {
+        throw new Error("Unauthorized");
+    }
+
+    const now = new Date();
+    
+    // Time boundaries
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+
+    try {
+        // Run all queries concurrently for performance
+        const [
+            totalItemsReq,
+            itemsThisMonthReq,
+            activeCheckoutsReq,
+            dueTodayReq,
+            pendingReq,
+            oldestPendingReq,
+            pendingYesterdayReq
+        ] = await Promise.all([
+            db.select({ count: count() }).from(EquipmentTable),
+            db.select({ count: count() }).from(EquipmentTable).where(gte(EquipmentTable.createdAt, startOfMonth)),
+            db.select({ count: count() }).from(BookingTable).where(eq(BookingTable.status, 'active')),
+            db.select({ count: count() }).from(BookingTable).where(
+                and(
+                    eq(BookingTable.status, 'active'), 
+                    gte(BookingTable.endTime, startOfToday), 
+                    lte(BookingTable.endTime, endOfToday)
+                )
+            ),
+            db.select({ count: count() }).from(BookingTable).where(eq(BookingTable.status, 'pending')),
+            db.select({ oldest: min(BookingTable.createdAt) }).from(BookingTable).where(eq(BookingTable.status, 'pending')),
+            db.select({ count: count() }).from(BookingTable).where(
+                and(
+                    eq(BookingTable.status, 'pending'), 
+                    gte(BookingTable.createdAt, startOfYesterday)
+                )
+            )
+        ]);
+
+        const totalItems = totalItemsReq[0].count;
+        const activeCheckouts = activeCheckoutsReq[0].count;
+
+        return {
+            totalItems,
+            itemsAddedThisMonth: itemsThisMonthReq[0].count,
+            activeCheckouts,
+            utilization: totalItems > 0 ? Math.round((activeCheckouts / totalItems) * 100) : 0,
+            dueBackToday: dueTodayReq[0].count,
+            pendingApproval: pendingReq[0].count,
+            oldestPendingDate: oldestPendingReq[0].oldest,
+            pendingSinceYesterday: pendingYesterdayReq[0].count
+        };
+    } catch (e) {
+        console.error("Error fetching stats:", e);
+        return null;
+    }
+}
+

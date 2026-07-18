@@ -251,7 +251,7 @@ export default function UploadEquipmentForm() {
                                             id="form-rhf-textarea-description"
                                             aria-invalid={fieldState.invalid}
                                             placeholder="Provide descriptive inventory details, serial numbers, or notable accessories included..."
-                                            className="w-full min-h-[100px] p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-transparent text-sm focus-visible:ring-2 focus-visible:ring-blue-500 transition-shadow resize-none"
+                                            className="w-full min-h-[60px] p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-transparent text-sm focus-visible:ring-2 focus-visible:ring-blue-500 transition-shadow resize-none"
                                         />
                                         {fieldState.invalid && <FieldError errors={[fieldState.error]} className="text-xs text-red-500 mt-1" />}
                                     </Field>
@@ -288,7 +288,7 @@ export default function UploadEquipmentForm() {
 
                                             <label
                                                 htmlFor="native-file-upload"
-                                                className={`w-full border-2 border-dashed rounded-xl p-8 sm:p-10 flex flex-col items-center justify-center gap-3 transition-all group ${isUploading
+                                                className={`w-full border-2 border-dashed rounded-xl p-3 sm:p-5 flex flex-col items-center justify-center gap-3 transition-all group ${isUploading
                                                         ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/50 cursor-not-allowed'
                                                         : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 hover:bg-blue-50/20 dark:bg-zinc-900/10 dark:hover:bg-blue-900/5 hover:border-blue-500 dark:hover:border-blue-500 cursor-pointer'
                                                     }`}

@@ -17,5 +17,5 @@ export const equipmentSchema = z.object({
     requireApproval: z.boolean().default(true),
     maxCheckOutDays: z.coerce.number()
         .int().min(1, "Must be at least 1 day")
-        .max(365, "Cannot exceed 365 days")
+        .max(365, "Cannot exceed 365 days"),
 })

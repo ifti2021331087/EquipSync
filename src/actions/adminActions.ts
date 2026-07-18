@@ -4,7 +4,7 @@ import { equipmentSchema } from "@/components/schama/equipment";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { BookingTable, EquipmentTable, user } from "@/lib/db/schema";
-import { and, count, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import z from "zod";
@@ -73,6 +73,26 @@ export async function getTotalEquipmentCountAction() {
     catch (e) {
         console.log(e);
         return 0;
+    }
+}
+
+export const updateEquipmentStockAction = async (equipmentId: string, newStock: number) => {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session || session.user.role !== 'admin') {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    try {
+        await db.update(EquipmentTable)
+            .set({ stock: newStock })
+            .where(eq(EquipmentTable.id, equipmentId));
+
+        // Revalidate the specific equipment page so the new data renders on refresh
+        revalidatePath(`/admin/equipment/${equipmentId}`);
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating stock: ", error);
+        return { success: false, error: "Failed to update stock" };
     }
 }
 
@@ -187,7 +207,7 @@ export const getWeeklyEquipmentStatsAction = async (equipmentId: string, weekSta
                 userName: user.name,
                 startTime: BookingTable.startTime,
                 endTime: BookingTable.endTime,
-                status:BookingTable.status
+                status: BookingTable.status
             })
             .from(BookingTable)
             .leftJoin(user, () => eq(BookingTable.userId, user.id))
@@ -204,25 +224,25 @@ export const getWeeklyEquipmentStatsAction = async (equipmentId: string, weekSta
             pending: [] as { userName: string, slot: string }[],
             approved: [] as { userName: string, slot: string }[],
         }))
-        weeklyBookings.map((booking)=>{
-            const bookingDate=new Date(booking.startTime);
-            bookingDate.setHours(0,0,0,0);
-            const diffTime=bookingDate.getTime()-startDate.getTime();
-            const index=Math.floor(diffTime/(24*60*60*1000));
+        weeklyBookings.map((booking) => {
+            const bookingDate = new Date(booking.startTime);
+            bookingDate.setHours(0, 0, 0, 0);
+            const diffTime = bookingDate.getTime() - startDate.getTime();
+            const index = Math.floor(diffTime / (24 * 60 * 60 * 1000));
 
-            if(index>=0 && index<7){
-                const userName=booking.userName||"unknown user";
-                const startHour=booking.startTime.getHours().toString().padStart(2,'0');
-                const endHour=booking.endTime.getHours().toString().padStart(2,'0');
+            if (index >= 0 && index < 7) {
+                const userName = booking.userName || "unknown user";
+                const startHour = booking.startTime.getHours().toString().padStart(2, '0');
+                const endHour = booking.endTime.getHours().toString().padStart(2, '0');
 
-                const bookingDetails={
-                    userName:booking.userName||"unknown user",
-                    slot:`${startHour}:00-${endHour}:00`
+                const bookingDetails = {
+                    userName: booking.userName || "unknown user",
+                    slot: `${startHour}:00-${endHour}:00`
                 }
-                if(booking.status==='approved'){
+                if (booking.status === 'approved') {
                     stats[index].approved.push(bookingDetails)
                 }
-                if(booking.status==='pending'){
+                if (booking.status === 'pending') {
                     stats[index].pending.push(bookingDetails)
                 }
             }
@@ -232,8 +252,155 @@ export const getWeeklyEquipmentStatsAction = async (equipmentId: string, weekSta
     catch (error) {
         console.error("Error fetching daily slots:", error);
         return Array.from({ length: 7 }, () => ({
-            pending: [] ,
+            pending: [],
             approved: [],
         }))
+    }
+}
+
+
+// checkout-related-actions
+
+export const getReadyForPickupAction = async () => {
+    const session = await auth.api.getSession({
+        headers: await headers()
+    })
+
+    if (!session || session.user.role !== 'admin') {
+        return [];
+    }
+
+    // CREATE NEW TIME WINDOWS
+    const now = new Date();
+    const twentyMinsFromNow = new Date(now.getTime() + 20 * 60 * 1000);
+
+    try {
+        const data = await db.select({
+            id: BookingTable.id,
+            equipmentName: EquipmentTable.name,
+            currentStock: EquipmentTable.stock,
+            userName: user.name,
+            startTime: BookingTable.startTime,
+            endTime: BookingTable.endTime,
+        })
+            .from(BookingTable)
+            .leftJoin(user, eq(user.id, BookingTable.userId))
+            .leftJoin(EquipmentTable, eq(EquipmentTable.id, BookingTable.equipmentId))
+            .where(
+                and(
+                    eq(BookingTable.status, 'approved'),
+                    // Show if it starts in the next 20 mins OR has already started
+                    lte(BookingTable.startTime, twentyMinsFromNow),
+                    // Hide it if the booking's end time has already completely passed
+                    gte(BookingTable.endTime, now)
+                )
+            ).orderBy(asc(BookingTable.startTime))
+
+        return data;
+
+    }
+    catch (e) {
+        console.log("Error fetching ready pickups: ", e);
+        return [];
+    }
+}
+
+export const getAwaitingReturnAction = async () => {
+    const session = await auth.api.getSession({
+        headers: await headers()
+    })
+
+    if (!session || session.user.role !== 'admin') {
+        return [];
+    }
+
+    try {
+        const data = await db.select(
+            {
+                id: BookingTable.id,
+                equipmentName: EquipmentTable.name,
+                userName: user.name,
+                startTime: BookingTable.startTime,
+                endTime: BookingTable.endTime,
+            }
+        )
+            .from(BookingTable)
+            .leftJoin(user, eq(user.id, BookingTable.userId))
+            .leftJoin(EquipmentTable, eq(EquipmentTable.id, BookingTable.equipmentId))
+            .where(eq(BookingTable.status, 'active'))
+            .orderBy(asc(BookingTable.endTime))
+
+        return data;
+    }
+    catch (e) {
+        console.error("FULL DATABASE ERROR:", JSON.stringify(e, Object.getOwnPropertyNames(e)));
+        return [];
+    }
+}
+
+export const grantEquipmentAction = async (bookingId: string) => {
+    try {
+        const [booking] = await db.select({
+            equipmentId: BookingTable.equipmentId
+        })
+            .from(BookingTable)
+            .where(eq(BookingTable.id, bookingId))
+
+        if (!booking || !booking.equipmentId) {
+            return {
+                success: false,
+                error: "Booking or equipment not found!"
+            }
+        }
+
+        await db.update(BookingTable).set({
+            status: 'active'
+        }).where(eq(BookingTable.id, bookingId));
+
+        await db.update(EquipmentTable).set({
+            stock: sql`${EquipmentTable.stock} - 1`
+        }).where(eq(EquipmentTable.id, booking.equipmentId));
+
+        revalidatePath('/admin');
+        revalidatePath('/admin/handoff');
+
+        return {
+            success: true
+        }
+    }
+    catch (e) {
+        console.error("🔥 FATAL CHECKOUT ERROR: ", e);
+        return { success: false, error: "Failed to checkout" };
+    }
+}
+export const returnEquipmentAction = async (bookingId: string) => {
+    try {
+        const [booking] = await db.select({
+            equipmentId: BookingTable.equipmentId,
+            startTime: BookingTable.startTime,
+            endTime:BookingTable.endTime,
+        })
+            .from(BookingTable)
+            .where(eq(BookingTable.id, bookingId));
+
+        if (!booking || !booking.equipmentId) {
+            return { success: false, error: "Booking or equipment not found" };
+        }
+        const currentTime = new Date();
+        const isLate = currentTime > booking.endTime;
+        await db.update(BookingTable)
+            .set({ status: isLate ? 'late' : 'returned' })
+            .where(eq(BookingTable.id, bookingId));
+
+        await db.update(EquipmentTable)
+            .set({ stock: sql`${EquipmentTable.stock} + 1` })
+            .where(eq(EquipmentTable.id, booking.equipmentId));
+
+        revalidatePath('/admin');
+        revalidatePath('/admin/handoff');
+        return { success: true };
+    } catch (e) {
+        console.error("Return Error: ", e);
+        return { success: false, error: "Failed to return" };
     }
 }

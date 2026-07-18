@@ -94,6 +94,7 @@ export const EquipmentTable = pgTable("equipment", {
   equipmentStatus: equipmentStatusEnum("equipment_status").default("active").notNull(),
   requireApproval: boolean("require_approval").default(true).notNull(),
   maxCheckOutDays: integer("max_checkout_days").default(3).notNull(),
+  stock:integer("stock").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
