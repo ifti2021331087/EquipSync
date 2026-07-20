@@ -18,12 +18,12 @@ export default async function DamageReport({
     const reportData = await getReportsDataAction(status);
 
     return (
-        <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="w-full max-w-8xl mx-auto sm:p-3 lg:p-5">
             
             {/* Header Section (Responsive: stacks on mobile, row on desktop) */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 mb-6 md:mb-8">
                 <div className="w-full sm:w-auto min-w-0">
-                    <h1 className="text-2xl md:text-3xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">Damage reports</h1>
+                    <h1 className="text-2xl md:text-lg font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">Damage reports</h1>
                     <p className="text-sm text-zinc-500 font-mono tracking-tight mt-1.5 truncate sm:whitespace-normal">
                         Manage equipment issues and repair lifecycles
                     </p>

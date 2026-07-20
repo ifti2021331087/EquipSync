@@ -145,7 +145,7 @@ export const getPendingRequestsAction = async (userId: string) => {
     try {
         const data = await db.select(
             {
-                id:BookingTable.id,
+                id: BookingTable.id,
                 equipmentName: EquipmentTable.name,
                 image: EquipmentTable.imageUrl,
                 startTime: BookingTable.startTime,
@@ -167,8 +167,8 @@ export const getPendingRequestsAction = async (userId: string) => {
 
 }
 
-export const togglePendingRequestAction=async(bookingId:string)=>{
-     const session = await auth.api.getSession({
+export const togglePendingRequestAction = async (bookingId: string) => {
+    const session = await auth.api.getSession({
         headers: await headers()
     })
     if (!session?.user.id) {
@@ -177,23 +177,23 @@ export const togglePendingRequestAction=async(bookingId:string)=>{
             error: "You must be logged in toggle your pending requests."
         }
     }
-    try{
+    try {
         await db.update(BookingTable).set({
-            status:'cancelled'
+            status: 'cancelled'
         })
-        .where(eq(BookingTable.id,bookingId))
+            .where(eq(BookingTable.id, bookingId))
 
         revalidatePath("/checkouts");
         revalidatePath("/requests")
-        return{
-            success:true
+        return {
+            success: true
         }
     }
-    catch(e){
+    catch (e) {
         console.log(e);
-        return{
-            success:false,
-            error:"Unexpected error while toggling the pending request."
+        return {
+            success: false,
+            error: "Unexpected error while toggling the pending request."
         }
     }
 }
@@ -207,18 +207,18 @@ export const getUserRequestsAction = async (status?: 'active' | 'pending' | 'app
     }
 
     try {
-        const whereConditions = status 
+        const whereConditions = status
             ? and(eq(BookingTable.userId, session.user.id), eq(BookingTable.status, status))
             : eq(BookingTable.userId, session.user.id);
 
-        
+
         const data = await db.select(
             {
                 equipmentName: EquipmentTable.name,
                 image: EquipmentTable.imageUrl,
                 startTime: BookingTable.startTime,
                 endTime: BookingTable.endTime,
-                status:BookingTable.status
+                status: BookingTable.status
             }
         )
             .from(BookingTable)
@@ -236,7 +236,7 @@ export const getUserRequestsAction = async (status?: 'active' | 'pending' | 'app
 
 }
 
-export const getUserTotalBookingCount=async()=>{
+export const getUserTotalBookingCount = async () => {
     const session = await auth.api.getSession({
         headers: await headers()
     })
@@ -244,11 +244,11 @@ export const getUserTotalBookingCount=async()=>{
         return 0;
     }
     try {
-        const whereConditions =eq(BookingTable.userId, session.user.id);
+        const whereConditions = eq(BookingTable.userId, session.user.id);
 
-        
+
         const data = await db.select(
-            {totalRequests:count()}
+            { totalRequests: count() }
         )
             .from(BookingTable)
             .leftJoin(EquipmentTable, () => eq(EquipmentTable.id, BookingTable.equipmentId))
@@ -258,7 +258,7 @@ export const getUserTotalBookingCount=async()=>{
     }
     catch (e) {
         console.log("Pending request error: ", e);
-        return ;
+        return;
     }
 
 
@@ -272,7 +272,7 @@ export const getDashboardStatsAction = async () => {
     }
 
     const now = new Date();
-    
+
     // Time boundaries
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -295,8 +295,8 @@ export const getDashboardStatsAction = async () => {
             db.select({ count: count() }).from(BookingTable).where(eq(BookingTable.status, 'active')),
             db.select({ count: count() }).from(BookingTable).where(
                 and(
-                    eq(BookingTable.status, 'active'), 
-                    gte(BookingTable.endTime, startOfToday), 
+                    eq(BookingTable.status, 'active'),
+                    gte(BookingTable.endTime, startOfToday),
                     lte(BookingTable.endTime, endOfToday)
                 )
             ),
@@ -304,7 +304,7 @@ export const getDashboardStatsAction = async () => {
             db.select({ oldest: min(BookingTable.createdAt) }).from(BookingTable).where(eq(BookingTable.status, 'pending')),
             db.select({ count: count() }).from(BookingTable).where(
                 and(
-                    eq(BookingTable.status, 'pending'), 
+                    eq(BookingTable.status, 'pending'),
                     gte(BookingTable.createdAt, startOfYesterday)
                 )
             )
@@ -329,23 +329,23 @@ export const getDashboardStatsAction = async () => {
     }
 }
 
-export const getAllEquipmentListAction=async()=>{
-    try{
-        const data=await db.select({
-            id:EquipmentTable.id,
-            title:EquipmentTable.name
+export const getAllEquipmentListAction = async () => {
+    try {
+        const data = await db.select({
+            id: EquipmentTable.id,
+            title: EquipmentTable.name
         })
-        .from(EquipmentTable)
+            .from(EquipmentTable)
 
         return data;
     }
-    catch(e){
+    catch (e) {
         console.log(e);
         return [];
     }
 }
 
-export const createReportAction=async(data:z.infer<typeof reportDamageSchema>)=>{
+export const createReportAction = async (data: z.infer<typeof reportDamageSchema>) => {
     const session = await auth.api.getSession({
         headers: await headers()
     })
@@ -356,27 +356,81 @@ export const createReportAction=async(data:z.infer<typeof reportDamageSchema>)=>
         }
     }
 
-    const validatedData=reportDamageSchema.parse(data);
-    try{
+    const validatedData = reportDamageSchema.parse(data);
+    try {
         await db.insert(DamageReportTable).values({
-            equipmentId:validatedData.equipmentId as string,
-            reportedById:session.user.id as string,
-            title:validatedData.title as string,
-            description:validatedData.description as string,
-            severity:validatedData.severity,
-            imageUrl:validatedData.imageUrl as string
+            equipmentId: validatedData.equipmentId as string,
+            reportedById: session.user.id as string,
+            title: validatedData.title as string,
+            description: validatedData.description as string,
+            severity: validatedData.severity,
+            imageUrl: validatedData.imageUrl as string
         })
 
-        return{
-            success:true,
+        return {
+            success: true,
         }
     }
-    catch(e){
-        console.log("Report creation error: ",e);
-        return{
-            success:false,
-            error:"Unexpected error while creating the report."
+    catch (e) {
+        console.log("Report creation error: ", e);
+        return {
+            success: false,
+            error: "Unexpected error while creating the report."
         }
     }
 }
 
+// history-related-actions 
+
+export const getUserAllCompletedCheckoutsAction = async () => {
+    const session = await auth.api.getSession({
+        headers: await headers()
+    })
+    if (!session?.user.id) {
+        return [];
+    }
+    const userId = session.user.id;
+    try {
+        const data = await db.select({
+            id: BookingTable.id,
+            equipmentName:EquipmentTable.name,
+            startTime: BookingTable.startTime,
+            endTime: BookingTable.endTime,
+            status:BookingTable.status,
+            imageUrl: EquipmentTable.imageUrl,
+        })
+            .from(BookingTable)
+            .leftJoin(user, () => eq(user.id, BookingTable.userId))
+            .leftJoin(EquipmentTable, () => eq(EquipmentTable.id, BookingTable.equipmentId))
+            .where(inArray(BookingTable.status, ['late', 'returned']))
+
+        return data;
+    }
+    catch (e) {
+        console.log(e);
+        return [];
+    }
+}
+
+export const getUserDamageReportsAction = async () => {
+    const session = await auth.api.getSession({
+        headers: await headers()
+    })
+    if (!session?.user.id) {
+        return [];
+    }
+    const userId = session.user.id;
+    try {
+        const [data] = await db.select({
+            totalReport: count()
+        })
+        .from(DamageReportTable)
+        .where(eq(DamageReportTable.reportedById, userId))
+
+        return data.totalReport;
+    }
+    catch (e) {
+        console.log(e);
+        return 0;
+    }
+}

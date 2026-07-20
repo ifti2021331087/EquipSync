@@ -18,7 +18,7 @@ export default async function EquipmentPage({ searchParams }:
     return (
         <div className="space-y-6">
             <div className='flex justify-between items-center'>
-                <h1 className='text-2xl font-semibold text-zinc-900 dark:text-zinc-100'>Equipment inventory</h1>
+                <h1 className='text-lg font-semibold text-zinc-900 dark:text-zinc-100'>Equipment inventory</h1>
                 <div className="flex items-center gap-3">
                     <UploadEquipmentForm />
                 </div>

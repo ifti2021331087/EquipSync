@@ -106,3 +106,51 @@ export const formatDateTimeForPendingRequest = (start: Date, end: Date) => {
 
   return `${dateStr} · ${startTimeStr} – ${endTimeStr}`;
 };
+
+export function formatCheckoutTime(start: Date | string, end: Date | string): string {
+  // Ensure we are working with Date objects
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+
+  // 1. Calculate the duration
+  const diffMs = endDate.getTime() - startDate.getTime();
+  const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+  
+  let durationStr = "";
+  if (diffHours < 24) {
+    const hours = Math.max(1, diffHours); // Prevent "0 hours"
+    durationStr = `${hours} hour${hours !== 1 ? 's' : ''}`;
+  } else {
+    const diffDays = Math.round(diffHours / 24);
+    durationStr = `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+  }
+
+  // 2. Extract date parts
+  const startMonth = startDate.toLocaleString('en-US', { month: 'short' });
+  const startDay = startDate.getDate();
+  const startYear = startDate.getFullYear();
+  
+  const endMonth = endDate.toLocaleString('en-US', { month: 'short' });
+  const endDay = endDate.getDate();
+  const endYear = endDate.getFullYear();
+
+  // 3. Format the date string based on how much the dates differ
+  let dateStr = "";
+
+  if (startYear !== endYear) {
+    // Different years: Dec 30, 2025 – Jan 2, 2026
+    dateStr = `${startMonth} ${startDay}, ${startYear} – ${endMonth} ${endDay}, ${endYear}`;
+  } else if (startMonth !== endMonth) {
+    // Same year, different months: May 29 – Jun 2, 2026
+    dateStr = `${startMonth} ${startDay} – ${endMonth} ${endDay}, ${startYear}`;
+  } else if (startDay !== endDay) {
+    // Same year, same month, different days: Jun 14–15, 2026
+    dateStr = `${startMonth} ${startDay}–${endDay}, ${startYear}`;
+  } else {
+    // Same day: Jun 8, 2026
+    dateStr = `${startMonth} ${startDay}, ${startYear}`;
+  }
+
+  // 4. Combine and return
+  return `${dateStr} · ${durationStr}`;
+}

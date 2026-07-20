@@ -37,7 +37,7 @@ export default async function ReportDetailsPage({ params }: { params: Promise<{ 
     }[reportDetails.status];
 
     return (
-        <div className="max-w-6xl w-full mx-auto p-4 md:p-6 lg:p-8">
+        <div className="max-w-8xl w-full mx-auto p-4 md:p-6 lg:p-8">
             
             {/* Navigation / Back Button */}
             <div className="mb-5 md:mb-6">
