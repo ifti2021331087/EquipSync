@@ -1,5 +1,5 @@
 // app/admin/page.tsx (or your dashboard component)
-import { getDashboardStatsAction } from '@/actions/userActions';
+import { getDashboardStatsAction } from '@/actions/adminActions';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { ArrowRight, ArrowRightLeft } from 'lucide-react';
@@ -63,7 +63,7 @@ export default async function Dashboard() {
 
             </div>
             <div>
-                <Link href="/admin/handOff" className="block group mt-6">
+                <Link href="/admin/handoff" className="block group mt-6">
                     <Card className="p-4 flex items-center justify-between border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 hover:bg-blue-100/50 dark:hover:bg-blue-900/40 transition-colors shadow-sm">
                         <div className="flex items-center gap-4">
                             <div className="p-2.5 bg-blue-100 dark:bg-blue-900/50 rounded-xl text-blue-700 dark:text-blue-400">

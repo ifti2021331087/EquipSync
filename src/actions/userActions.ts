@@ -131,6 +131,47 @@ export const getDailyBookedSlotsAction = async (equipmentId: string, dateString:
     }
 }
 
+// checkout-related-action
+
+export const getCheckoutDataAction = async () => {
+    const session = await auth.api.getSession({
+        headers: await headers()
+    })
+    if (!session?.user.id) {
+        return {
+            success: false,
+            error: "You must be logged in to get the checkout data."
+        }
+    }
+    try {
+        const [checkoutReq, pendingReq, totalCheckoutReq] = await Promise.all([
+            await db.select({ count: count() })
+                .from(BookingTable).where(and(eq(BookingTable.userId, session.user.id), eq(BookingTable.status, 'active'))),
+
+            await db.select({ count: count() })
+                .from(BookingTable).where(and(eq(BookingTable.userId, session.user.id), eq(BookingTable.status, 'pending'))),
+
+            await db.select({ count: count() })
+                .from(BookingTable).where(and(eq(BookingTable.userId, session.user.id), inArray(BookingTable.status, ['late', 'returned']))),
+        ])
+
+        const checkedOutCount=checkoutReq[0].count;
+        const pendingCount=pendingReq[0].count;
+        const totalCheckoutCount=totalCheckoutReq[0].count;
+
+        return{
+            checkedOutCount,
+            pendingCount,
+            totalCheckoutCount
+        }
+        
+    }
+    catch(e){
+        console.log("Checkout Data finding error: ",e)
+        return {};
+    }
+}
+
 export const getPendingRequestsAction = async (userId: string) => {
     const session = await auth.api.getSession({
         headers: await headers()
@@ -198,6 +239,7 @@ export const togglePendingRequestAction = async (bookingId: string) => {
     }
 }
 
+
 export const getUserRequestsAction = async (status?: 'active' | 'pending' | 'approved' | 'returned' | 'denied' | 'cancelled' | 'late') => {
     const session = await auth.api.getSession({
         headers: await headers()
@@ -264,71 +306,6 @@ export const getUserTotalBookingCount = async () => {
 
 }
 
-
-export const getDashboardStatsAction = async () => {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session || session.user.role !== 'admin') {
-        throw new Error("Unauthorized");
-    }
-
-    const now = new Date();
-
-    // Time boundaries
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-    const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
-
-    try {
-        // Run all queries concurrently for performance
-        const [
-            totalItemsReq,
-            itemsThisMonthReq,
-            activeCheckoutsReq,
-            dueTodayReq,
-            pendingReq,
-            oldestPendingReq,
-            pendingYesterdayReq
-        ] = await Promise.all([
-            db.select({ count: count() }).from(EquipmentTable),
-            db.select({ count: count() }).from(EquipmentTable).where(gte(EquipmentTable.createdAt, startOfMonth)),
-            db.select({ count: count() }).from(BookingTable).where(eq(BookingTable.status, 'active')),
-            db.select({ count: count() }).from(BookingTable).where(
-                and(
-                    eq(BookingTable.status, 'active'),
-                    gte(BookingTable.endTime, startOfToday),
-                    lte(BookingTable.endTime, endOfToday)
-                )
-            ),
-            db.select({ count: count() }).from(BookingTable).where(eq(BookingTable.status, 'pending')),
-            db.select({ oldest: min(BookingTable.createdAt) }).from(BookingTable).where(eq(BookingTable.status, 'pending')),
-            db.select({ count: count() }).from(BookingTable).where(
-                and(
-                    eq(BookingTable.status, 'pending'),
-                    gte(BookingTable.createdAt, startOfYesterday)
-                )
-            )
-        ]);
-
-        const totalItems = totalItemsReq[0].count;
-        const activeCheckouts = activeCheckoutsReq[0].count;
-
-        return {
-            totalItems,
-            itemsAddedThisMonth: itemsThisMonthReq[0].count,
-            activeCheckouts,
-            utilization: totalItems > 0 ? Math.round((activeCheckouts / totalItems) * 100) : 0,
-            dueBackToday: dueTodayReq[0].count,
-            pendingApproval: pendingReq[0].count,
-            oldestPendingDate: oldestPendingReq[0].oldest,
-            pendingSinceYesterday: pendingYesterdayReq[0].count
-        };
-    } catch (e) {
-        console.error("Error fetching stats:", e);
-        return null;
-    }
-}
-
 export const getAllEquipmentListAction = async () => {
     try {
         const data = await db.select({
@@ -393,10 +370,10 @@ export const getUserAllCompletedCheckoutsAction = async () => {
     try {
         const data = await db.select({
             id: BookingTable.id,
-            equipmentName:EquipmentTable.name,
+            equipmentName: EquipmentTable.name,
             startTime: BookingTable.startTime,
             endTime: BookingTable.endTime,
-            status:BookingTable.status,
+            status: BookingTable.status,
             imageUrl: EquipmentTable.imageUrl,
         })
             .from(BookingTable)
@@ -424,8 +401,8 @@ export const getUserDamageReportsAction = async () => {
         const [data] = await db.select({
             totalReport: count()
         })
-        .from(DamageReportTable)
-        .where(eq(DamageReportTable.reportedById, userId))
+            .from(DamageReportTable)
+            .where(eq(DamageReportTable.reportedById, userId))
 
         return data.totalReport;
     }
@@ -434,3 +411,4 @@ export const getUserDamageReportsAction = async () => {
         return 0;
     }
 }
+

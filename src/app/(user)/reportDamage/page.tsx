@@ -6,7 +6,7 @@ export default function ReportDamage() {
   return (
     <div className="max-w-7xl w-full mx-auto p-2 lg:p-4 flex flex-col lg:flex-row gap-6 lg:gap-8">
 
-      <div className="w-full lg:flex-1">
+      <div className="bg-background/90 p-8 w-full lg:flex-1">
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-zinc-900 dark:text-white">Report Damage</h1>
           <p className="text-sm text-zinc-500 font-mono uppercase tracking-tight">

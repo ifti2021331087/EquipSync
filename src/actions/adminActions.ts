@@ -3,13 +3,80 @@
 import { equipmentSchema } from "@/components/schama/equipment";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { BookingTable, DamageReportTable, EquipmentTable, user } from "@/lib/db/schema";
-import { and, asc, count, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { BookingTable, DamageReportTable, EquipmentTable, user, session } from "@/lib/db/schema";
+import { and, asc, count, desc, eq, gte, inArray, lte, min, ne, sql } from "drizzle-orm";
 import { PgTableWithColumns, PgColumn } from "drizzle-orm/pg-core";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import z from "zod";
 
+// dashboard-related-action
+
+export const getDashboardStatsAction = async () => {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session || session.user.role !== 'admin') {
+        throw new Error("Unauthorized");
+    }
+
+    const now = new Date();
+
+    // Time boundaries
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+
+    try {
+        // Run all queries concurrently for performance
+        const [
+            totalItemsReq,
+            itemsThisMonthReq,
+            activeCheckoutsReq,
+            dueTodayReq,
+            pendingReq,
+            oldestPendingReq,
+            pendingYesterdayReq
+        ] = await Promise.all([
+            db.select({ count: count() }).from(EquipmentTable),
+            db.select({ count: count() }).from(EquipmentTable).where(gte(EquipmentTable.createdAt, startOfMonth)),
+            db.select({ count: count() }).from(BookingTable).where(eq(BookingTable.status, 'active')),
+            db.select({ count: count() }).from(BookingTable).where(
+                and(
+                    eq(BookingTable.status, 'active'),
+                    gte(BookingTable.endTime, startOfToday),
+                    lte(BookingTable.endTime, endOfToday)
+                )
+            ),
+            db.select({ count: count() }).from(BookingTable).where(eq(BookingTable.status, 'pending')),
+            db.select({ oldest: min(BookingTable.createdAt) }).from(BookingTable).where(eq(BookingTable.status, 'pending')),
+            db.select({ count: count() }).from(BookingTable).where(
+                and(
+                    eq(BookingTable.status, 'pending'),
+                    gte(BookingTable.createdAt, startOfYesterday)
+                )
+            )
+        ]);
+
+        const totalItems = totalItemsReq[0].count;
+        const activeCheckouts = activeCheckoutsReq[0].count;
+
+        return {
+            totalItems,
+            itemsAddedThisMonth: itemsThisMonthReq[0].count,
+            activeCheckouts,
+            utilization: totalItems > 0 ? Math.round((activeCheckouts / totalItems) * 100) : 0,
+            dueBackToday: dueTodayReq[0].count,
+            pendingApproval: pendingReq[0].count,
+            oldestPendingDate: oldestPendingReq[0].oldest,
+            pendingSinceYesterday: pendingYesterdayReq[0].count
+        };
+    } catch (e) {
+        console.error("Error fetching stats:", e);
+        return null;
+    }
+}
+
+// equipment-realated-action
 
 export async function uploadEquipmentAction(data: z.infer<typeof equipmentSchema>) {
     const session = await auth.api.getSession({
@@ -96,6 +163,8 @@ export const updateEquipmentStockAction = async (equipmentId: string, newStock: 
         return { success: false, error: "Failed to update stock" };
     }
 }
+
+// approval-related-action
 
 export async function reviewBookingAction(bookingId: string, newStatus: "approved" | "denied") {
 
@@ -193,6 +262,8 @@ export const togglePendingStatus = async (bookingId: string, newStatus: "active"
         }
     }
 }
+
+// schedule-related-action
 
 export const getWeeklyEquipmentStatsAction = async (equipmentId: string, weekStartDateStr: string) => {
 
@@ -545,6 +616,158 @@ export const handleResolveAction = async (reportId: string) => {
         return {
             success: false,
             error: "Unexpected error while resolving the report..."
+        }
+    }
+}
+
+
+// member-related-actions
+
+export const getAdminMemberAction = async (role?: string, page: number = 1, limit: number = 10) => {
+    const session = await auth.api.getSession({
+        headers: await headers()
+    });
+
+    if (!session || session.user.role !== 'admin') {
+        throw new Error("You must be logged in and admin to get all the users");
+    }
+
+    try {
+        const offset = (page - 1) * limit;
+
+        // 1. Fetch Paginated Data
+        const query = db.select({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            activeEquipment: sql<number>`sum(case when ${BookingTable.status} = 'active' then 1 else 0 end)`.mapWith(Number),
+            pendingEquipment: sql<number>`sum(case when ${BookingTable.status} = 'pending' then 1 else 0 end)`.mapWith(Number),
+            status: user.banned
+        })
+        .from(user)
+        .leftJoin(BookingTable, eq(BookingTable.userId, user.id))
+        .groupBy(user.id)
+        .orderBy(desc(user.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+        if (role) {
+            query.where(eq(user.role, role));
+        }
+
+        const members = await query;
+
+        // 2. Fetch Total Count (for pagination math)
+        const countQuery = db.select({
+            count: sql<number>`count(*)`.mapWith(Number)
+        }).from(user);
+        
+        if (role) {
+            countQuery.where(eq(user.role, role));
+        }
+        
+        const totalResult = await countQuery;
+        const totalRecords = totalResult[0]?.count || 0;
+        const totalPages = Math.ceil(totalRecords / limit);
+
+        return { members, totalPages };
+    }
+    catch (e) {
+        console.error(e);
+        return { members: [], totalPages: 0 };
+    }
+}
+
+export const banUserByIdAction = async (targetUserId: string) => {
+    const userSession = await auth.api.getSession({
+        headers: await headers()
+    })
+
+    if (!userSession?.user.id && userSession?.user.role === 'admin') {
+        throw new Error("You must be logged in and admin to ban a member");
+    }
+    if (userSession?.user.email === "admin@test.com") {
+        return { success: true, message: "Demo Mode: member ban simulated successfully!" };
+    }
+
+    try {
+        await db.update(user).set({ banned: true }).where(eq(user.id, targetUserId));
+        await db.delete(session).where(eq(session.userId, targetUserId));
+        revalidatePath("/admin/members")
+        return {
+            success: true,
+            message:"Member banned successfully"
+        }
+    }
+    catch (e) {
+        console.log(e);
+        return {
+            success: false
+        }
+    }
+}
+
+export const unBanUserByIdAction = async (targetUserId: string) => {
+    const userSession = await auth.api.getSession({
+        headers: await headers()
+    })
+
+    if (!userSession?.user.id && userSession?.user.role === 'admin') {
+        throw new Error("You must be logged in and admin to unban a member");
+    }
+
+    if (userSession?.user.email === "admin@test.com") {
+        return { success: true, message: "Demo Mode: member ban simulated successfully!" };
+    }
+
+    try {
+        await db.update(user).set({
+            banned: false,
+            banReason: null,
+            banExpires: null,
+        }).where(eq(user.id, targetUserId));
+
+        revalidatePath("/admin/members")
+        return {
+            success: true,
+            message:"member unbanned successfully"
+        }
+    }
+    catch (e) {
+        console.log(e);
+        return {
+            success: false
+        }
+    }
+}
+
+export const deleteUserByIdAction = async (userId: string) => {
+    const userSession = await auth.api.getSession({
+        headers: await headers()
+    })
+
+    if (!userSession?.user.id && userSession?.user.role === 'admin') {
+        throw new Error("You must be logged in and admin to delete a member");
+    }
+
+    if (userSession?.user.email === "admin@test.com") {
+        return { success: true, message: "Demo Mode: Member deletion simulated successfully!" };
+    }
+
+    try {
+        await db.delete(user).where(eq(user.id, userId));
+
+        revalidatePath("/admin/members");
+        return {
+            success: true,
+            message:"Member deleted successfully"
+        }
+    }
+    catch (e) {
+        console.log(e);
+        return {
+            success: false
         }
     }
 }
