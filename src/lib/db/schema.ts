@@ -1,5 +1,5 @@
 
-import { bookingStatusEnum, damageSeverityEnum, damageStatusEnum, equipmentConditionEnum, equipmentStatusEnum} from "@/utils/extraForSchema";
+import { bookingStatusEnum, damageSeverityEnum, damageStatusEnum, equipmentConditionEnum, equipmentStatusEnum, notificationTypeEnum} from "@/utils/extraForSchema";
 import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, boolean, index, uuid, integer } from "drizzle-orm/pg-core";
 
@@ -147,6 +147,32 @@ export const DamageReportTable = pgTable("damage_reports", {
     .notNull(),
 });
 
+export const NotificationTable = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  
+  // The user receiving the notification
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }).notNull(),
+  
+  // Links to the enum created above
+  type: notificationTypeEnum("type").notNull(),
+  
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  
+  // Tracks if the user has seen it (used for the green dot and bold styling)
+  isRead: boolean("is_read").default(false).notNull(),
+  
+  // Optional: Link directly to the booking related to this notification
+  relatedBookingId: uuid("related_booking_id").references(() => BookingTable.id, { onDelete: "set null" }),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+},
+(table) => [
+  // Indexes for faster querying since notifications grow quickly
+  index("notification_userId_idx").on(table.userId),
+  index("notification_isRead_idx").on(table.isRead)
+]);
+
 // relations
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -155,6 +181,7 @@ export const userRelations = relations(user, ({ many }) => ({
   bookings:many(BookingTable,{relationName:"user_bookings"}),
   reviewedBookings:many(BookingTable,{relationName:"reviewed_bookings"}),
   reportedDamages: many(DamageReportTable, { relationName: "reported_damages" }),
+  notifications: many(NotificationTable),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -176,7 +203,7 @@ export const equipmentRelations=relations(EquipmentTable,({many})=>({
   damageReports: many(DamageReportTable),
 }))
 
-export const bookingRelations=relations(BookingTable,({one})=>({
+export const bookingRelations=relations(BookingTable,({one,many})=>({
 
   equipment:one(EquipmentTable,{
     fields:[BookingTable.equipmentId],
@@ -191,7 +218,8 @@ export const bookingRelations=relations(BookingTable,({one})=>({
     fields:[BookingTable.reviewedById],
     references:[user.id],
     relationName:"reviewed_bookings"
-  })
+  }),
+  notifications: many(NotificationTable),
 
 }))
 
@@ -210,3 +238,14 @@ export const reportRelation=relations(DamageReportTable,({one})=>({
     references: [user.id],
   }),
 }))
+
+export const NotificationRelations = relations(NotificationTable, ({ one }) => ({
+  user: one(user, {
+    fields: [NotificationTable.userId],
+    references: [user.id],
+  }),
+  booking: one(BookingTable, {
+    fields: [NotificationTable.relatedBookingId],
+    references: [BookingTable.id],
+  }),
+}));

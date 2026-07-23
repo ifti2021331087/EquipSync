@@ -48,7 +48,7 @@ export default async function UserLayout({
             <UserSidebar/>
             
             <main className="flex-1 bg-[#F9FAFB] dark:bg-zinc-900/40 p-6 md:p-10 overflow-y-auto">
-              <div className="max-w-6xl mx-auto">
+              <div className="max-w-8xl mx-auto">
                 {children}
                 <Toaster />
               </div>

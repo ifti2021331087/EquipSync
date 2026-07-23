@@ -10,6 +10,7 @@ import { and, eq, gt, gte, inArray, lt, lte, or, count, min, asc, desc } from "d
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import z from "zod"
+import { sendNotification } from "./notificationActions";
 
 
 export async function getEquipmentDetailsById(id: string) {
@@ -80,13 +81,23 @@ export const createBookingAction = async (data: z.infer<typeof bookingSchema>) =
 
         const initialStatus = equipment.requireApproval ? "pending" : "approved";
 
-        await db.insert(BookingTable).values({
+        const [newBooking] = await db.insert(BookingTable).values({
             equipmentId: validatedData.equipmentId,
             userId: session.user.id,
             startTime: validatedData.startTime,
             endTime: validatedData.endTime,
             status: initialStatus
-        })
+        }).returning({ id: BookingTable.id });
+
+        await sendNotification({
+            userId: session.user.id,
+            type: initialStatus === "approved" ? "booking_approved" : "booking_submitted",
+            title: initialStatus === "approved" ? "Booking Confirmed" : "Request Submitted",
+            message: initialStatus === "approved" 
+                ? `Your booking for ${equipment.name} is confirmed.` 
+                : `Your request for ${equipment.name} has been sent to admins for review.`,
+            relatedBookingId: newBooking.id
+        });
 
         revalidatePath(`/equipment/${equipment.id}`)
 
